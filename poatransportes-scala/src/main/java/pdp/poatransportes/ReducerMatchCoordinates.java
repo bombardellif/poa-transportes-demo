@@ -8,14 +8,15 @@ import java.util.Map;
 import java.util.Vector;
 
 import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.util.Collector;
 import org.apache.flink.ml.common.LabeledVector;
 import org.apache.flink.ml.math.DenseVector;
 
-//public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integer, Integer, Double, Double, Double>, Tuple2<Integer, LabeledVector>> {
-public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integer, Integer, Double, Double, Double>, LabeledVector> {
+public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integer, Integer, Double, Double, Double>, Tuple2<Integer, LabeledVector>> {
+//public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integer, Integer, Double, Double, Double>, LabeledVector> {
 
 	private Map<Integer, Vector<double[]>> lineCoordinates;
 	
@@ -95,8 +96,8 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 	@Override
 	public void reduce(
 			Iterable<Tuple5<Integer, Integer, Double, Double, Double>> groupedData,
-//			Collector<Tuple2<Integer, LabeledVector>> fullData)
-			Collector<LabeledVector> fullData)
+			Collector<Tuple2<Integer, LabeledVector>> fullData)
+//			Collector<LabeledVector> fullData)
 			throws Exception {
 		
 		Vector<double[]> travelCoordinates = new Vector<double[]>();
@@ -146,10 +147,10 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 		assert match.length == inputs.size();
 		int i = 0;
 		for (Tuple3<Integer, Integer, Double> input : inputs) {
-//			fullData.collect(new Tuple2<Integer, LabeledVector>(
-//					input.f0,
-//					new LabeledVector(input.f2, new DenseVector(new double[]{match[i]}))));
-			fullData.collect(new LabeledVector(input.f2, new DenseVector(new double[]{match[i]})));
+			fullData.collect(new Tuple2<Integer, LabeledVector>(
+					input.f0,
+					new LabeledVector(input.f2, new DenseVector(new double[]{match[i]}))));
+//			fullData.collect(new LabeledVector(input.f2, new DenseVector(new double[]{match[i]})));
 			
 			i++;
 		}
