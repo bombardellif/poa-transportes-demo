@@ -1,7 +1,5 @@
 package pdp.poatransportes;
 
-import org.apache.flink.api.scala.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -73,17 +71,17 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 			}
 			double newCostLeft = accCost + distances[i][argminLeft];
 			
-			if (newCostWhole < newCostLeft) {
-				// Start the search again
-				k = argminLeft;
-				i = lines-1;
-				j = lines-1;
-			} else {
+//			if (newCostWhole < newCostLeft) {
+//				// Start the search again
+//				k = argminLeft;
+//				i = lines-1;
+//				j = lines-1;
+//			} else {
 				// Continue the search in the upper row
 				result[i] = argminWhole;
 				i -= 1;
 				j = argminWhole;
-			}
+//			}
 		}
 		return result;
 	}
@@ -108,7 +106,7 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 		boolean first = true;
 		for (Tuple5<Integer, Integer, Double, Double, Double> phoneData : groupedData) {
 			if (first) {
-				thisLineCoordinates = this.lineCoordinates.get(phoneData.f0);
+				thisLineCoordinates = this.lineCoordinates.get(phoneData.f1);
 			}
 			
 			travelCoordinates.add(new double[]{phoneData.f3, phoneData.f4});
@@ -116,43 +114,45 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 			inputs.add(new Tuple3<Integer, Integer, Double>(phoneData.f0, phoneData.f1, phoneData.f2));
 		}
 		
-		// Calculate the distance between any pair of coordinates
-		double[][] distanceMatrix = pairwiseDistance(travelCoordinates, thisLineCoordinates);
-		
-		// Match the phone coordinates with the line ones
-		int[] match = matchCoordinates(distanceMatrix);
-		
-		// Estimate when the bus might have left the initial stop, if we don't know it yet
-		double timeAtBegin;
-		if (match[0] != 0) {
-			int last = inputs.size()-1,
-				xFirst = match[0],
-				xLast = match[last];
-			double yFirst = inputs.get(0).f2,
-				yLast = inputs.get(last).f2;
+		if (thisLineCoordinates != null) {
+			// Calculate the distance between any pair of coordinates
+			double[][] distanceMatrix = pairwiseDistance(travelCoordinates, thisLineCoordinates);
 			
-			double a = (yLast - yFirst) / (xLast - xFirst);
+			// Match the phone coordinates with the line ones
+			int[] match = matchCoordinates(distanceMatrix);
 			
-			timeAtBegin = (yFirst + yLast - a*xFirst - a*xLast) / 2.0;
-		} else {
-			timeAtBegin = inputs.get(0).f2;
-		}
-		
-		// Translate the data points downwards at the Cartesian plane
-		for (Tuple3<Integer, Integer, Double> input : inputs) {
-			input.f2 -= timeAtBegin;
-		};
-		
-		// Add the matched coordinates in the resulting dataset, which is a dataset of labeled vector
-		assert match.length == inputs.size();
-		int i = 0;
-		for (Tuple3<Integer, Integer, Double> input : inputs) {
-			fullData.collect(new Tuple2<Integer, LabeledVector>(
-					input.f0,
-					new LabeledVector(input.f2, new DenseVector(new double[]{match[i]}))));
-//			fullData.collect(new LabeledVector(input.f2, new DenseVector(new double[]{match[i]})));
+			// Estimate when the bus might have left the initial stop, if we don't know it yet
+			double timeAtBegin;
+			if (match[0] != 0) {
+				int last = inputs.size()-1,
+					xFirst = match[0],
+					xLast = match[last];
+				double yFirst = inputs.get(0).f2,
+					yLast = inputs.get(last).f2;
+				
+				double a = (yLast - yFirst) / (xLast - xFirst);
+				
+				timeAtBegin = (yFirst + yLast - a*xFirst - a*xLast) / 2.0;
+			} else {
+				timeAtBegin = inputs.get(0).f2;
+			}
 			
-			i++;
+			// Translate the data points downwards at the Cartesian plane
+			for (Tuple3<Integer, Integer, Double> input : inputs) {
+				input.f2 -= timeAtBegin;
+			};
+			
+			// Add the matched coordinates in the resulting dataset, which is a dataset of labeled vector
+			assert match.length == inputs.size();
+			int i = 0;
+			for (Tuple3<Integer, Integer, Double> input : inputs) {
+				fullData.collect(new Tuple2<Integer, LabeledVector>(
+						input.f1,
+						new LabeledVector(input.f2, new DenseVector(new double[]{match[i]-80}))));
+	//			fullData.collect(new LabeledVector(input.f2, new DenseVector(new double[]{match[i]})));
+				
+				i++;
+			}
 		}
 	}
 
