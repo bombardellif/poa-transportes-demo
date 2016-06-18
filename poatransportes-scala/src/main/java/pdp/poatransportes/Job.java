@@ -24,12 +24,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.ml.common.LabeledVector;
@@ -100,7 +98,7 @@ public class Job {
 		
 		// Read data input from phones (batch)
 		List<Tuple5<Integer, Integer, Double, Double, Double>> input = new ArrayList<>();
-		input.add(new Tuple5<Integer, Integer, Double, Double, Double>(43, 1, 0.0, -30.072, -51.118));
+		input.add(new Tuple5<Integer, Integer, Double, Double, Double>(43, 1, 1.0, -30.072, -51.118));
 		input.add(new Tuple5<Integer, Integer, Double, Double, Double>(43, 1, 3.5, -30.068, -51.144));
 		input.add(new Tuple5<Integer, Integer, Double, Double, Double>(43, 1, 7.5, -30.037, -51.203));
 		DataSource<Tuple5<Integer, Integer, Double, Double, Double>> phoneData = env.fromCollection(input);
@@ -114,9 +112,17 @@ public class Job {
 			.groupBy(0, 1)							// Group by (linha_id,phone_id)
 			.reduceGroup(new ReducerMatchCoordinates(mapLinesCoordinates));
 		
-		trainingDS.print();
+		MultipleLinearRegression mlr = Trainer.trainMLR(trainingDS);
 		
-		MultipleLinearRegression ml = new MultipleLinearRegression();
+		
+		org.apache.flink.ml.math.Vector v0 = new org.apache.flink.ml.math.DenseVector(new double[]{0.0});
+		org.apache.flink.ml.math.Vector v1 = new org.apache.flink.ml.math.DenseVector(new double[]{1.0});
+		org.apache.flink.ml.math.Vector v2 = new org.apache.flink.ml.math.DenseVector(new double[]{2.0});
+		org.apache.flink.ml.math.Vector v3 = new org.apache.flink.ml.math.DenseVector(new double[]{3.0});
+		DataSet<org.apache.flink.ml.math.Vector> test = env.fromElements(v0, v1, v2, v3);
+		Trainer.predictMLR(mlr, test);
+		
+		mlr.weightsOption().get().print();
 		
 		// execute program
 		env.execute("Flink Java API Skeleton");
