@@ -12,9 +12,17 @@ object Trainer {
   def trainMLR(javaDs: JavaDataSet[LabeledVector]): MultipleLinearRegression = {
     
     val mlr = MultipleLinearRegression()
+      .setIterations(1)
+      .setStepsize(0.5)
+      .setConvergenceThreshold(0.001)
+    
     val scalaDs = new DataSet[LabeledVector](javaDs)
     
+    scalaDs.print()
     mlr.fit(scalaDs)
+    val wv = mlr.weightsOption.get
+    wv.print()
+    
     mlr
   }
   
@@ -28,8 +36,15 @@ object Trainer {
     prediction.print()
   }
   
-   def predictMLR(mlr: MultipleLinearRegression, javaDs: JavaDataSet[Vector]): Unit = {
+  def predictMLR(mlr: MultipleLinearRegression, javaDs: JavaDataSet[Vector]): Unit = {
     val scalaDs = new DataSet[Vector](javaDs)
+    
+    val prediction = mlr.predict(scalaDs)
+    prediction.print()
+  }
+  
+  def predictMLRValidate(mlr: MultipleLinearRegression, javaDs: JavaDataSet[LabeledVector]): Unit = {
+    val scalaDs = new DataSet[LabeledVector](javaDs)
     
     val prediction = mlr.predict(scalaDs)
     prediction.print()

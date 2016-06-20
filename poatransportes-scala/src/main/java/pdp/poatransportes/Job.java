@@ -45,8 +45,6 @@ import org.apache.flink.api.java.io.jdbc.*;
 import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.DOUBLE_TYPE_INFO;
 import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.INT_TYPE_INFO;
 
-import java.sql.*;
-
 /**
  * Skeleton for a Flink Job.
  *
@@ -62,9 +60,12 @@ import java.sql.*;
  * 		target/flink-quickstart-0.1-SNAPSHOT-Sample.jar
  *
  */
+
+import com.github.fommil.netlib.BLAS;
 public class Job {
 
 	public static void main(String[] args) throws Exception {
+		
 		// set up the execution environment
 		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
@@ -146,7 +147,6 @@ public class Job {
 			.collect();
 		for (Tuple2<Integer,Vector<double[]>> line : listOfLines) {
 			mapLinesCoordinates.put(line.f0, line.f1);
-			System.out.println(line.f1.size());
 		}
 		
 		// Read data input from phones (batch)
@@ -177,7 +177,6 @@ public class Job {
 		List<Tuple2<Integer, WeightVector>> trainedVectors = new ArrayList<>();
 		for (final Tuple1<Integer> lineNumber : lines.collect()) {
 			
-			System.out.println(lineNumber);
 			DataSet<LabeledVector> trainingDSOneLine = 
 				trainingDS.filter(new FilterFunction<Tuple2<Integer,LabeledVector>>() {
 					private static final long serialVersionUID = 1L;
@@ -194,22 +193,23 @@ public class Job {
 						return datapoint.f1;
 					}
 				});
-			trainingDSOneLine.print();
+//			trainingDSOneLine.print();
 			
 			MultipleLinearRegression mlr = Trainer.trainMLR(trainingDSOneLine);
 			
-			trainedVectors.add(new Tuple2<Integer, WeightVector>(
-					lineNumber.f0,
-					mlr.weightsOption().get().collect().head()
-			));
-			org.apache.flink.ml.math.Vector v0 = new org.apache.flink.ml.math.DenseVector(new double[]{200.0});
-			org.apache.flink.ml.math.Vector v1 = new org.apache.flink.ml.math.DenseVector(new double[]{230.0});
-			org.apache.flink.ml.math.Vector v2 = new org.apache.flink.ml.math.DenseVector(new double[]{300.0});
-			org.apache.flink.ml.math.Vector v3 = new org.apache.flink.ml.math.DenseVector(new double[]{350.0});
-			DataSet<org.apache.flink.ml.math.Vector> test = env.fromElements(v0, v1, v2, v3);
-			DataSet<WeightVector> weights = env.fromElements(trainedVectors.get(trainedVectors.size()-1).f1);
-			Trainer.predictMLR(mlr, test);
-			System.out.println(trainedVectors.get(trainedVectors.size()-1).f1);
+//			trainedVectors.add(new Tuple2<Integer, WeightVector>(
+//					lineNumber.f0,
+//					mlr.weightsOption().get().collect().head()
+//			));
+//			org.apache.flink.ml.math.Vector v0 = new org.apache.flink.ml.math.DenseVector(new double[]{0.0});
+//			org.apache.flink.ml.math.Vector v1 = new org.apache.flink.ml.math.DenseVector(new double[]{1.0});
+//			org.apache.flink.ml.math.Vector v2 = new org.apache.flink.ml.math.DenseVector(new double[]{3.0});
+//			org.apache.flink.ml.math.Vector v3 = new org.apache.flink.ml.math.DenseVector(new double[]{153.0});
+//			DataSet<org.apache.flink.ml.math.Vector> test = env.fromElements(v0, v1, v2, v3);
+//			DataSet<WeightVector> weights = env.fromElements(trainedVectors.get(trainedVectors.size()-1).f1);
+//			trainingDSOneLine.print();
+//			Trainer.predictMLR(weights, test);
+//			System.out.println(trainedVectors.get(trainedVectors.size()-1).f1);
 		}
 //		trainingDS.print();
 //		env.fromCollection(trainedVectors).print();

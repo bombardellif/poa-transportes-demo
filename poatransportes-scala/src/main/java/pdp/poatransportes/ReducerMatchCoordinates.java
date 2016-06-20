@@ -78,9 +78,9 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 //				j = lines-1;
 //			} else {
 				// Continue the search in the upper row
-				result[i] = argminWhole;
+				result[i] = argminLeft;
 				i -= 1;
-				j = argminWhole;
+				j = argminLeft;
 //			}
 		}
 		return result;
@@ -107,6 +107,7 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 		for (Tuple5<Integer, Integer, Double, Double, Double> phoneData : groupedData) {
 			if (first) {
 				thisLineCoordinates = this.lineCoordinates.get(phoneData.f1);
+				first = false;
 			}
 			
 			travelCoordinates.add(new double[]{phoneData.f3, phoneData.f4});
@@ -144,11 +145,14 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 			
 			// Add the matched coordinates in the resulting dataset, which is a dataset of labeled vector
 			assert match.length == inputs.size();
+			double centralizeTerm = match.length > 0 ? match[0] : 0;
 			int i = 0;
 			for (Tuple3<Integer, Integer, Double> input : inputs) {
 				fullData.collect(new Tuple2<Integer, LabeledVector>(
 						input.f1,
-						new LabeledVector(input.f2, new DenseVector(new double[]{match[i]-80}))));
+						new LabeledVector(input.f2, new DenseVector(new double[]{i}))));
+//						new LabeledVector(input.f2, new DenseVector(new double[]{match[i] - centralizeTerm}))));
+						
 	//			fullData.collect(new LabeledVector(input.f2, new DenseVector(new double[]{match[i]})));
 				
 				i++;
