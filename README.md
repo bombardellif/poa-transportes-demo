@@ -7,3 +7,5 @@ Antes de importar o dump rodar o seguinte comando:
 
 CREATE ROLE bombardellif LOGIN
   NOSUPERUSER INHERIT NOCREATEDB NOCREATEROLE NOREPLICATION;
+
+Esse branch falhou com plugin de ML do Flink
