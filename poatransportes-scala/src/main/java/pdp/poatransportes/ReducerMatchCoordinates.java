@@ -150,7 +150,7 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 			for (Tuple3<Integer, Integer, Double> input : inputs) {
 				fullData.collect(new Tuple2<Integer, LabeledVector>(
 						input.f1,
-						new LabeledVector(input.f2, new DenseVector(new double[]{i}))));
+						new LabeledVector(input.f2, new DenseVector(new double[]{match[i]}))));
 //						new LabeledVector(input.f2, new DenseVector(new double[]{match[i] - centralizeTerm}))));
 						
 	//			fullData.collect(new LabeledVector(input.f2, new DenseVector(new double[]{match[i]})));

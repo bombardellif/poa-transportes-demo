@@ -19,6 +19,7 @@ package pdp.poatransportes;
  */
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,7 @@ import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.INT_TYPE_INFO;
  * 		target/flink-quickstart-0.1-SNAPSHOT-Sample.jar
  *
  */
+
 
 import com.github.fommil.netlib.BLAS;
 public class Job {
@@ -107,23 +109,8 @@ public class Job {
 			new TupleTypeInfo(Tuple3.class, INT_TYPE_INFO, DOUBLE_TYPE_INFO, DOUBLE_TYPE_INFO)
 		);
 		
-//		List<Tuple3<Integer, Double, Double>> listOfCoordinates = new ArrayList<>();
-//		listOfCoordinates.add(new Tuple3<Integer, Double, Double>(43, -30.07207257673100000, -51.11791210867900000));
-//		listOfCoordinates.add(new Tuple3<Integer, Double, Double>(43, -30.06895057673100000, -51.14392710867900000));
-//		listOfCoordinates.add(new Tuple3<Integer, Double, Double>(43, -30.05572457673100000, -51.17224110867900000));
-//		listOfCoordinates.add(new Tuple3<Integer, Double, Double>(43, -30.03799357673100000, -51.20369010867900000));
-//		listOfCoordinates.add(new Tuple3<Integer, Double, Double>(43, -30.02316957673100000, -51.22079910867900000));
-//		
 		final Map<Integer, Vector<double[]>> mapLinesCoordinates = new HashMap<>();
-//		for (Tuple3<Integer, Double, Double> coordinate : listOfCoordinates) {
-//			Vector<double[]> value = mapLinesCoordinates.get(coordinate.f0);
-//			if (value == null) {
-//				value = new Vector<>();
-//				mapLinesCoordinates.put(coordinate.f0, value);
-//			}
-//			
-//			value.add(new double[]{coordinate.f1, coordinate.f2});
-//		}
+		
 		List<Tuple2<Integer,Vector<double[]>>> listOfLines = dbData.groupBy(0)
 			.reduceGroup(new GroupReduceFunction<Tuple3<Integer,Double,Double>, Tuple2<Integer,Vector<double[]>>>() {
 				private static final long serialVersionUID = 1L;
@@ -150,12 +137,6 @@ public class Job {
 		}
 		
 		// Read data input from phones (batch)
-//		List<Tuple5<Integer, Integer, Double, Double, Double>> input = new ArrayList<>();
-//		input.add(new Tuple5<Integer, Integer, Double, Double, Double>(43, 1, 1.0, -30.072, -51.118));
-//		input.add(new Tuple5<Integer, Integer, Double, Double, Double>(43, 1, 3.5, -30.068, -51.144));
-//		input.add(new Tuple5<Integer, Integer, Double, Double, Double>(43, 1, 7.5, -30.037, -51.203));
-//		DataSource<Tuple5<Integer, Integer, Double, Double, Double>> phoneData = env.fromCollection(input);
-		
 		DataSource<Tuple5<Integer, Integer, Double, Double, Double>> phoneData = env
 			.readCsvFile("../data/phoneData-small.csv")
 			.fieldDelimiter(",")
@@ -195,24 +176,22 @@ public class Job {
 				});
 //			trainingDSOneLine.print();
 			
-			MultipleLinearRegression mlr = Trainer.trainMLR(trainingDSOneLine);
+			WeightVector weight = Trainer.trainMLR(trainingDSOneLine);
+			trainedVectors.add(new Tuple2<Integer, WeightVector>(
+					lineNumber.f0,
+					weight
+			));
 			
-//			trainedVectors.add(new Tuple2<Integer, WeightVector>(
-//					lineNumber.f0,
-//					mlr.weightsOption().get().collect().head()
-//			));
 //			org.apache.flink.ml.math.Vector v0 = new org.apache.flink.ml.math.DenseVector(new double[]{0.0});
-//			org.apache.flink.ml.math.Vector v1 = new org.apache.flink.ml.math.DenseVector(new double[]{1.0});
-//			org.apache.flink.ml.math.Vector v2 = new org.apache.flink.ml.math.DenseVector(new double[]{3.0});
-//			org.apache.flink.ml.math.Vector v3 = new org.apache.flink.ml.math.DenseVector(new double[]{153.0});
+//			org.apache.flink.ml.math.Vector v1 = new org.apache.flink.ml.math.DenseVector(new double[]{273.0});
+//			org.apache.flink.ml.math.Vector v2 = new org.apache.flink.ml.math.DenseVector(new double[]{300.0});
+//			org.apache.flink.ml.math.Vector v3 = new org.apache.flink.ml.math.DenseVector(new double[]{450.0});
 //			DataSet<org.apache.flink.ml.math.Vector> test = env.fromElements(v0, v1, v2, v3);
-//			DataSet<WeightVector> weights = env.fromElements(trainedVectors.get(trainedVectors.size()-1).f1);
-//			trainingDSOneLine.print();
+//			DataSet<WeightVector> weights = env.fromElements(weight);
 //			Trainer.predictMLR(weights, test);
-//			System.out.println(trainedVectors.get(trainedVectors.size()-1).f1);
 		}
 //		trainingDS.print();
-//		env.fromCollection(trainedVectors).print();
+		env.fromCollection(trainedVectors).print();
 		// execute program
 		env.execute("Flink Java API Skeleton");
 	}
