@@ -40,6 +40,12 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/postgresql-9.4.1208.jre7.jar"/>
+	<classpathentry exported="true" kind="lib" path="/Users/eduardo/Downloads/org.maven.ide.eclipse.scala_0.5.1.201410131304.jar"/>
+	<classpathentry kind="lib" path="/Users/eduardo/Downloads/postgresql-9.4.1208.jar"/>
+	<classpathentry kind="lib" path="/Users/eduardo/Downloads/flink-1.0.3 2/lib/flink-dist_2.10-1.0.3.jar"/>
+	<classpathentry kind="lib" path="/Users/eduardo/Downloads/flink-1.0.3 2/lib/flink-python_2.10-1.0.3.jar"/>
+	<classpathentry kind="lib" path="/Users/eduardo/Downloads/flink-1.0.3 2/lib/log4j-1.2.17.jar"/>
+	<classpathentry kind="lib" path="/Users/eduardo/Downloads/flink-1.0.3 2/lib/slf4j-log4j12-1.7.7.jar"/>
+	<classpathentry kind="lib" path="/Users/eduardo/Downloads/mysql-connector-java-5.1.39/mysql-connector-java-5.1.39-bin.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

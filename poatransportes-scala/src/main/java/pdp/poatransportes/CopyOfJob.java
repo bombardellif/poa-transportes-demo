@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Vector;
 
 import org.apache.flink.api.common.functions.FilterFunction;
-import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.operators.Order;
@@ -34,21 +33,16 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
-import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.typeutils.TupleTypeInfo;
 import org.apache.flink.ml.common.LabeledVector;
 import org.apache.flink.ml.common.WeightVector;
 import org.apache.flink.ml.regression.MultipleLinearRegression;
-import org.apache.flink.streaming.api.functions.windowing.delta.extractor.ArrayFromTuple;
 import org.apache.flink.util.Collector;
 import org.apache.flink.api.java.io.jdbc.*;
-
-import scala.Console;
 
 import java.sql.Connection;
 
@@ -74,16 +68,8 @@ import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.INT_TYPE_INFO;
 
 
 
-
-
-
-
-
-
-
-
 import com.github.fommil.netlib.BLAS;
-public class Job {
+public class CopyOfJob {
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args) throws Exception {
@@ -116,7 +102,8 @@ public class Job {
 		 */
 		
 		// Read data input from database
-		DataSet<Tuple4<Integer, Double, Double, Long>> dbData = env.createInput(
+		//DataSet<Tuple3<Integer, Double, Double>> dbData = env.createInput(
+		DataSet<Tuple3<String, String, String>> dbData = env.createInput(
 			// create and configure input format
 			JDBCInputFormat.buildJDBCInputFormat()
 				//.setDrivername("org.postgresql.Driver")
@@ -127,103 +114,49 @@ public class Job {
 				//.setPassword("1234")
 				.setUsername("root")
 				.setPassword("root")
-				.setQuery(
-					"SELECT C.linha_id, C.latitude, C.longitude, (C.id - F.minId) ordem " +
-					"FROM coordenadas C " +
-					"INNER JOIN (SELECT MIN(id) AS minId, linha_id FROM coordenadas GROUP BY linha_id) F ON (C.linha_id = F.linha_id) " +
-					"WHERE C.linha_id IN (SELECT id FROM linhas where tem_paradas = 1) " +
-					"ORDER BY C.linha_id, ordem ASC"
-				)
-				
-				//.setQuery("SELECT linha_id, latitude, longitude, id FROM coordenadas WHERE linha_id IN (SELECT id FROM linhas where tem_paradas = 1) ORDER BY id ASC")
-				
-				//.setQuery("SELECT linha_id, latitude, longitude FROM coordenadas WHERE linha_id = 127621 ORDER BY id ASC")
+				.setQuery("SELECT linha_id, latitude, longitude FROM coordenadas WHERE linha_id = 127621")
 				.finish(),
 			// specify type information for DataSet
-			new TupleTypeInfo(Tuple4.class, INT_TYPE_INFO, DOUBLE_TYPE_INFO, DOUBLE_TYPE_INFO, BasicTypeInfo.LONG_TYPE_INFO)
+			//new TupleTypeInfo(Tuple3.class, INT_TYPE_INFO, DOUBLE_TYPE_INFO, DOUBLE_TYPE_INFO)
+			new TupleTypeInfo(Tuple3.class, BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.STRING_TYPE_INFO)
 		);
 		
 		final Map<Integer, Vector<double[]>> mapLinesCoordinates = new HashMap<>();
 		
-		List<Tuple3<Integer, Vector<double[]>, Vector<Integer>>> listOfLines = dbData
-			.groupBy(0)
-			.sortGroup(3, Order.ASCENDING)
-			.reduceGroup(new GroupReduceFunction<Tuple4<Integer,Double,Double, Long>, Tuple2<Integer,Vector<double[]>>>() {
+		List<Tuple2<Integer,Vector<double[]>>> listOfLines = dbData.groupBy(0)
+			.reduceGroup(new GroupReduceFunction<Tuple3<String, String, String>, Tuple2<Integer,Vector<double[]>>>() {
 				private static final long serialVersionUID = 1L;
 				@Override
 				public void reduce(
-						Iterable<Tuple4<Integer, Double, Double, Long>> values,
+						Iterable<Tuple3<String, String, String>> values,
 						Collector<Tuple2<Integer, Vector<double[]>>> out)
 						throws Exception {
 					
 					Vector<double[]> route = new Vector<>();
 					boolean first = true;
 					int line = 0;
-					for (Tuple4<Integer, Double, Double, Long> coordinate : values) {
-						route.add(Integer.parseInt(coordinate.f3.toString()), new double[] {coordinate.f1, coordinate.f2});
+					for (Tuple3<String, String, String> coordinate : values) {
+						route.add(new double[]{Double.parseDouble(coordinate.f1), Double.parseDouble(coordinate.f2)});
 						if (first)
-							line = coordinate.f0;
+							line = Integer.parseInt(coordinate.f0);
 					}
 					out.collect(new Tuple2<>(line, route));
 				}
 			})
-			.map(new MapFunction<Tuple2<Integer, Vector<double[]>>, Tuple3<Integer, Vector<double[]>, Vector<Integer>>>() {
-				private static final long serialVersionUID = 1L;
-				
-				@Override
-				public Tuple3<Integer, Vector<double[]>, Vector<Integer>> map(Tuple2<Integer, Vector<double[]>> in) throws Exception {
-					Class.forName("com.mysql.jdbc.Driver").newInstance();
-					Connection con = java.sql.DriverManager.getConnection("jdbc:mysql://localhost/trabalho", "root", "root");
-					
-					java.sql.Statement st = con.createStatement();
-					String sql = 
-							"SELECT LP.ordem, P.lat, P.lon "
-						+ 	"FROM linhas_paradas LP "
-						+	"INNER JOIN paradas P ON (P.id = LP.parada_id) "
-						+ 	"WHERE LP.linha_id = " + String.valueOf(in.f0) + " "
-						+ 	"ORDER BY ordem ASC";
-					java.sql.ResultSet rs = st.executeQuery(sql);
-					Vector<Integer> stops = new Vector<Integer>(rs.getFetchSize());
-					while(rs.next()) {
-						int ordem = rs.getInt("ordem");
-						double[] coord = new double[]{rs.getDouble("lat"), rs.getDouble("lon")};
-						double nearestDistance = 10000000.0;
-						int nearest = 0;
-						int gettingFar = 0;
-						for(int i = 0; i < in.f1.size(); i++) {
-							double[] _coord = in.f1.get(i);
-							double dist = Math.sqrt(Math.pow(coord[0] - _coord[0], 2) + Math.pow(coord[1] - _coord[1], 2));
-							if(dist < nearestDistance) {
-								nearest = i;
-								nearestDistance = dist;
-								gettingFar = 0;
-							} else {
-								gettingFar++;
-							}
-							if(gettingFar > 10) {
-								/* se teve 10 aumentos seguidos de distancia, admite que já encontrou */
-								break;
-							}
-						}
-						stops.add(ordem - 1, nearest);
-					}
-					con.close();
-					Tuple3<Integer, Vector<double[]>, Vector<Integer>> out = new Tuple3<>(in.f0, in.f1, stops);
-					return out;
-				}
-			})
 			.collect();
-		for (Tuple3<Integer,Vector<double[]>, Vector<Integer>> line : listOfLines) {
+		for (Tuple2<Integer,Vector<double[]>> line : listOfLines) {
 			mapLinesCoordinates.put(line.f0, line.f1);
 		}
+		
 		// Read data input from phones (batch)
 		DataSource<Tuple5<Integer, Integer, Double, Double, Double>> phoneData = env
-			.readCsvFile("../data/phoneData-micro.csv")
+			.readCsvFile("../data/phoneData-small.csv")
 			.fieldDelimiter(",")
 			.types(Integer.class, Integer.class, Double.class, Double.class, Double.class);
 		
 		// Map to each line a vector of coordinates)
 		final DataSet<Tuple2<Integer, LabeledVector>> trainingDS = phoneData.sortPartition(1, Order.ASCENDING) // Order by linha_id
+//		DataSet<LabeledVector> trainingDS = phoneData.sortPartition(0, Order.ASCENDING) // Order by linha_id
 			.sortPartition(0, Order.ASCENDING)		// Order by phone_id
 			.sortPartition(2, Order.ASCENDING)		// Order by time
 			.groupBy(1, 0)							// Group by (linha_id,phone_id)
@@ -253,23 +186,25 @@ public class Job {
 						return datapoint.f1;
 					}
 				});
+//			trainingDSOneLine.print();
 			
 			WeightVector weight = Trainer.trainMLR(trainingDSOneLine);
 			trainedVectors.add(new Tuple2<Integer, WeightVector>(
 					lineNumber.f0,
 					weight
 			));
-
+			
+//			org.apache.flink.ml.math.Vector v0 = new org.apache.flink.ml.math.DenseVector(new double[]{0.0});
+//			org.apache.flink.ml.math.Vector v1 = new org.apache.flink.ml.math.DenseVector(new double[]{273.0});
+//			org.apache.flink.ml.math.Vector v2 = new org.apache.flink.ml.math.DenseVector(new double[]{300.0});
+//			org.apache.flink.ml.math.Vector v3 = new org.apache.flink.ml.math.DenseVector(new double[]{450.0});
+//			DataSet<org.apache.flink.ml.math.Vector> test = env.fromElements(v0, v1, v2, v3);
+//			DataSet<WeightVector> weights = env.fromElements(weight);
+//			Trainer.predictMLR(weights, test);
 		}
 //		trainingDS.print();
-		env
-			.fromCollection(trainedVectors)
-			/* produz uma lista com (linha_id, parada_id, parada nome, viagem, horario) */
-			.flatMap(new BusLineFlatMap(listOfLines))
-			.writeAsCsv("/Users/eduardo/Desktop/poa-transportes-demo/out.csv").setParallelism(1);
-			//.map(new MapFunction<Tuple2<Integer, LabeledVector>, >)
-			//.print();
+		env.fromCollection(trainedVectors).print();
 		// execute program
-		//env.execute("Flink Java API Skeleton");
+		env.execute("Flink Java API Skeleton");
 	}
 }

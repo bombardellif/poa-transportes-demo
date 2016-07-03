@@ -14,7 +14,6 @@ import org.apache.flink.ml.common.LabeledVector;
 import org.apache.flink.ml.math.DenseVector;
 
 public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integer, Integer, Double, Double, Double>, Tuple2<Integer, LabeledVector>> {
-//public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integer, Integer, Double, Double, Double>, LabeledVector> {
 
 	private Map<Integer, Vector<double[]>> lineCoordinates;
 	
@@ -31,8 +30,6 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 			for (int j=0; j<coord2.size(); j++) {
 				double[] p = coord2.get(j);
 				result[i][j] = Math.sqrt( Math.pow(q[0] - p[0], 2) + Math.pow(q[1] - p[1], 2));
-				
-				//System.out.printf("%f ", result[i][j]);
 			}
 		}
 		
@@ -71,17 +68,10 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 			}
 			double newCostLeft = accCost + distances[i][argminLeft];
 			
-//			if (newCostWhole < newCostLeft) {
-//				// Start the search again
-//				k = argminLeft;
-//				i = lines-1;
-//				j = lines-1;
-//			} else {
-				// Continue the search in the upper row
-				result[i] = argminLeft;
-				i -= 1;
-				j = argminLeft;
-//			}
+			result[i] = argminLeft;
+			i -= 1;
+			j = argminLeft;
+			
 		}
 		return result;
 	}
@@ -95,7 +85,6 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 	public void reduce(
 			Iterable<Tuple5<Integer, Integer, Double, Double, Double>> groupedData,
 			Collector<Tuple2<Integer, LabeledVector>> fullData)
-//			Collector<LabeledVector> fullData)
 			throws Exception {
 		
 		Vector<double[]> travelCoordinates = new Vector<double[]>();
@@ -117,10 +106,36 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 		
 		if (thisLineCoordinates != null) {
 			// Calculate the distance between any pair of coordinates
-			double[][] distanceMatrix = pairwiseDistance(travelCoordinates, thisLineCoordinates);
+			//double[][] distanceMatrix = pairwiseDistance(travelCoordinates, thisLineCoordinates);
 			
 			// Match the phone coordinates with the line ones
-			int[] match = matchCoordinates(distanceMatrix);
+			int[] match = new int[travelCoordinates.size()];
+			for(int j = 0; j < travelCoordinates.size(); j++) {
+				
+				double[] coord = travelCoordinates.get(j);
+				double nearestDistance = 10000000.0;
+				int nearest = 0;
+				int gettingFar = 0;
+				for(int i = 0; i < thisLineCoordinates.size(); i++) {
+					double[] _coord = thisLineCoordinates.get(i);
+					double dist = Math.sqrt(Math.pow(coord[0] - _coord[0], 2) + Math.pow(coord[1] - _coord[1], 2));
+					if(dist < nearestDistance) {
+						nearest = i;
+						nearestDistance = dist;
+						gettingFar = 0;
+					} else {
+						gettingFar++;
+					}
+					if(gettingFar > 10) {
+						/* se teve 10 aumentos seguidos de distancia, admite que já encontrou */
+						//break;
+					}
+				}
+				match[j] = nearest;
+			}
+			
+			
+			//int[] match = matchCoordinates(distanceMatrix);
 			
 			// Estimate when the bus might have left the initial stop, if we don't know it yet
 			double timeAtBegin;
@@ -145,15 +160,11 @@ public class ReducerMatchCoordinates implements GroupReduceFunction<Tuple5<Integ
 			
 			// Add the matched coordinates in the resulting dataset, which is a dataset of labeled vector
 			assert match.length == inputs.size();
-			double centralizeTerm = match.length > 0 ? match[0] : 0;
 			int i = 0;
 			for (Tuple3<Integer, Integer, Double> input : inputs) {
 				fullData.collect(new Tuple2<Integer, LabeledVector>(
 						input.f1,
 						new LabeledVector(input.f2, new DenseVector(new double[]{match[i]}))));
-//						new LabeledVector(input.f2, new DenseVector(new double[]{match[i] - centralizeTerm}))));
-						
-	//			fullData.collect(new LabeledVector(input.f2, new DenseVector(new double[]{match[i]})));
 				
 				i++;
 			}
